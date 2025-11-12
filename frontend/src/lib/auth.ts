@@ -1,6 +1,5 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { UserService } from './db/users'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -69,9 +68,9 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-          ; (session as any).accessToken = token.accessToken
+      if (token && session.user) {
+        (session.user as any).id = token.id as string
+        ; (session as any).accessToken = token.accessToken
       }
       return session
     },
@@ -84,19 +83,4 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   secret: process.env.NEXTAUTH_SECRET,
-}
-
-// Helper function to register new users
-export async function registerUser(email: string, password: string, name: string) {
-  try {
-    const user = await UserService.createUser({ email, password, name })
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name
-    }
-  } catch (error) {
-    throw error
-  }
 }
