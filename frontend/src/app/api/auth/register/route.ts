@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { registerUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,27 +29,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Register user
-    const user = await registerUser(email, password, name)
+    // Call backend API to register user
+    const backendUrl = process.env.BACKEND_URL || 'http://backend:8000'
+    const response = await fetch(`${backendUrl}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      // Forward backend error message
+      return NextResponse.json(
+        { error: data.detail || data.message || 'Registration failed' },
+        { status: response.status }
+      )
+    }
 
     return NextResponse.json({
       success: true,
       message: 'User registered successfully',
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
+        id: data.id,
+        email: data.email,
+        name: data.name
       }
     })
 
   } catch (error: any) {
-    if (error.message === 'User already exists') {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
-      )
-    }
-
     console.error('Registration error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
