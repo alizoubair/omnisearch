@@ -147,29 +147,6 @@ Omnisearch uses a modern, accessible design system built with:
 - `UploadZone`: Drag-and-drop file upload
 - `ResultsGrid`: Search results display
 
-## 🚀 Deployment
-
-### Development
-```bash
-npm run build
-npm run start
-```
-
-### Production (Azure)
-The frontend is deployed as part of the Omnisearch infrastructure:
-
-```bash
-# Deploy to Azure VM Scale Set
-cd ../infrastructure/terraform/environments/dev
-terraform apply -var-file="terraform.tfvars"
-```
-
-### Docker
-```bash
-docker build -t omnisearch-frontend .
-docker run -p 3000:3000 omnisearch-frontend
-```
-
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -183,19 +160,3 @@ Custom design tokens and components in `tailwind.config.js`
 
 ### TypeScript Configuration
 Strict TypeScript configuration in `tsconfig.json`
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is part of the Omnisearch AI Document Search platform.
-
----
-
-**Omnisearch Frontend** - Empowering users to discover, understand, and interact with documents through advanced AI technology. 🔍📄🤖
