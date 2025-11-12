@@ -1,0 +1,123 @@
+# Frontend Application Deployment Pipeline
+# Builds and deploys React frontend to Azure infrastructure
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - frontend/*
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - frontend/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  acrName: '$(ACR_NAME)'  # Set in pipeline variables
+  imageName: 'omnisearch-frontend'
+  imageTag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: 'Build and Push Docker Image'
+  jobs:
+  - job: BuildAndPush
+    displayName: 'Build Docker Image'
+    steps:
+    - task: Docker@2
+      displayName: 'Login to ACR'
+      inputs:
+        command: login
+        containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+    
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        command: build
+        repository: '$(imageName)'
+        dockerfile: 'frontend/Dockerfile'
+        buildContext: 'frontend'
+        tags: |
+          $(imageTag)
+          latest
+        arguments: '--build-arg NEXT_PUBLIC_API_BASE_URL=$(NEXT_PUBLIC_API_BASE_URL)'
+    
+    - task: Docker@2
+      displayName: 'Push to ACR'
+      inputs:
+        command: push
+        repository: '$(imageName)'
+        tags: |
+          $(imageTag)
+          latest
+    
+    - task: Docker@2
+      displayName: 'Logout from ACR'
+      inputs:
+        command: logout
+        containerRegistry: '$(ACR_SERVICE_CONNECTION)'
+
+- stage: Deploy
+  displayName: 'Deploy to VMs'
+  dependsOn: Build
+  jobs:
+  - deployment: DeployFrontend
+    displayName: 'Deploy to Presentation Tier'
+    environment:
+      name: 'development-frontend'
+      resourceType: VirtualMachine
+      tags: 'web'
+    strategy:
+      rolling:
+        maxParallel: 1
+        deploy:
+          steps:
+          - script: |
+              # Login to ACR
+              echo $(ACR_PASSWORD) | docker login $(acrName).azurecr.io -u $(ACR_USERNAME) --password-stdin
+              
+              # Pull latest image
+              docker pull $(acrName).azurecr.io/$(imageName):$(imageTag)
+              
+              # Stop and remove old container
+              docker stop omnisearch-frontend || true
+              docker rm omnisearch-frontend || true
+              
+              # Run new container with all required environment variables
+              docker run -d \
+                --name omnisearch-frontend \
+                --restart unless-stopped \
+                -p 3000:3000 \
+                -e NEXT_PUBLIC_API_BASE_URL=$(NEXT_PUBLIC_API_BASE_URL) \
+                -e NEXTAUTH_URL=$(NEXTAUTH_URL) \
+                -e NEXTAUTH_SECRET=$(NEXTAUTH_SECRET) \
+                -e AZURE_AD_CLIENT_ID=$(AZURE_AD_CLIENT_ID) \
+                -e AZURE_AD_CLIENT_SECRET=$(AZURE_AD_CLIENT_SECRET) \
+                -e AZURE_AD_TENANT_ID=$(AZURE_AD_TENANT_ID) \
+                -e AI_SEARCH_ENDPOINT=$(AI_SEARCH_ENDPOINT) \
+                -e AI_SEARCH_KEY=$(AI_SEARCH_KEY) \
+                -e OPENAI_ENDPOINT=$(OPENAI_ENDPOINT) \
+                -e OPENAI_KEY=$(OPENAI_KEY) \
+                -e STORAGE_CONNECTION_STRING=$(STORAGE_CONNECTION_STRING) \
+                -e DATABASE_URL=$(DATABASE_URL) \
+                $(acrName).azurecr.io/$(imageName):$(imageTag)
+              
+              # Cleanup old images
+              docker image prune -f
+            displayName: 'Deploy Docker Container'
+          
+          - script: |
+              # Wait for container to be healthy
+              sleep 10
+              
+              # Health check
+              curl -f http://localhost:3000/api/health || exit 1
+            displayName: 'Health Check'
