@@ -17,8 +17,12 @@ pr:
     include:
       - backend/*
 
+# Self-hosted agent pool (uses VMs from application tier)
+# Agents are automatically installed via VM extensions
+# Pool name must match the deployment group name configured in Terraform
+# Default: 'backend-vms' (can be changed in terraform.tfvars)
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'backend-vms'  # Self-hosted agent pool (matches backend_deployment_group_name)
 
 variables:
   acrName: '$(ACR_NAME)'  # Set in pipeline variables
