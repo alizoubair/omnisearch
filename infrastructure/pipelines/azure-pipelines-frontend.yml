@@ -17,8 +17,12 @@ pr:
     include:
       - frontend/*
 
+# Self-hosted agent pool (uses VMs from presentation tier)
+# Agents are automatically installed via VM extensions
+# Pool name must match the deployment group name configured in Terraform
+# Default: 'frontend-vms' (can be changed in terraform.tfvars)
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'frontend-vms'  # Self-hosted agent pool (matches frontend_deployment_group_name)
 
 variables:
   acrName: '$(ACR_NAME)'  # Set in pipeline variables
