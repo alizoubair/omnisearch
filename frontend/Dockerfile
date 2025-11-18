@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Next.js Frontend
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -13,9 +13,6 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Copy environment file
-COPY .env.local .env.local
-
 # Accept build argument and set as environment variable
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
@@ -24,7 +21,7 @@ ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine as production
+FROM node:18-alpine AS production
 
 # Set working directory
 WORKDIR /app
