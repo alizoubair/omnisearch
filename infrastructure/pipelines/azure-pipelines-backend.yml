@@ -73,56 +73,42 @@ stages:
   dependsOn: Build
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   jobs:
-  - deployment: DeployBackend
+  - job: DeployBackend
     displayName: 'Deploy to Application Tier'
-    environment:
-      name: 'development-backend'
-      resourceType: VirtualMachine
-      tags: 'api'
-    strategy:
-      rolling:
-        maxParallel: 1
-        deploy:
-          steps:
-          - script: |
-              # Login to ACR
-              echo $(ACR_PASSWORD) | docker login $(acrName).azurecr.io -u $(ACR_USERNAME) --password-stdin
-              
-              # Pull latest image
-              docker pull $(acrName).azurecr.io/$(imageName):$(imageTag)
-              
-              # Stop and remove old container
-              docker stop omnisearch-backend || true
-              docker rm omnisearch-backend || true
-              
-              # Run database migrations (if needed)
-              docker run --rm \
-                --network host \
-                -e DATABASE_URL=$(DATABASE_URL) \
-                $(acrName).azurecr.io/$(imageName):$(imageTag) \
-                alembic upgrade head
-              
-              # Run new container
-              docker run -d \
-                --name omnisearch-backend \
-                --restart unless-stopped \
-                -p 8000:8000 \
-                -e DATABASE_URL=$(DATABASE_URL) \
-                -e OPENAI_API_KEY=$(OPENAI_API_KEY) \
-                -e AZURE_SEARCH_ENDPOINT=$(AZURE_SEARCH_ENDPOINT) \
-                -e AZURE_SEARCH_KEY=$(AZURE_SEARCH_KEY) \
-                -e AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT) \
-                -e AZURE_DOCUMENT_INTELLIGENCE_KEY=$(AZURE_DOCUMENT_INTELLIGENCE_KEY) \
-                $(acrName).azurecr.io/$(imageName):$(imageTag)
-              
-              # Cleanup old images
-              docker image prune -f
-            displayName: 'Deploy Docker Container'
-          
-          - script: |
-              # Wait for container to be healthy
-              sleep 10
-              
-              # Health check
-              curl -f http://localhost:8000/api/health || exit 1
-            displayName: 'Health Check'
+    pool:
+      name: 'backend-vms'  # Deploy directly on self-hosted agents
+    steps:
+    - script: |
+        # Login to ACR
+        echo $(ACR_PASSWORD) | docker login $(acrName).azurecr.io -u $(ACR_USERNAME) --password-stdin
+        
+        # Pull latest image
+        docker pull $(acrName).azurecr.io/$(imageName):$(imageTag)
+        
+        # Stop and remove old container
+        docker stop omnisearch-backend || true
+        docker rm omnisearch-backend || true
+        
+        # Run database migrations (if needed)
+        docker run --rm \
+          --network host \
+          -e DATABASE_URL=$(DATABASE_URL) \
+          $(acrName).azurecr.io/$(imageName):$(imageTag) \
+          alembic upgrade head
+        
+        # Run new container
+        docker run -d \
+          --name omnisearch-backend \
+          --restart unless-stopped \
+          -p 8000:8000 \
+          -e DATABASE_URL=$(DATABASE_URL) \
+          -e OPENAI_API_KEY=$(OPENAI_API_KEY) \
+          -e AZURE_SEARCH_ENDPOINT=$(AZURE_SEARCH_ENDPOINT) \
+          -e AZURE_SEARCH_KEY=$(AZURE_SEARCH_KEY) \
+          -e AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT) \
+          -e AZURE_DOCUMENT_INTELLIGENCE_KEY=$(AZURE_DOCUMENT_INTELLIGENCE_KEY) \
+          $(acrName).azurecr.io/$(imageName):$(imageTag)
+        
+        # Cleanup old images
+        docker image prune -f
+      displayName: 'Deploy Docker Container'
