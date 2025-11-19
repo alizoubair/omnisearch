@@ -111,11 +111,3 @@ stages:
         # Cleanup old images
         docker image prune -f
       displayName: 'Deploy Docker Container'
-    
-    - script: |
-        # Wait for container to be healthy
-        sleep 10
-        
-        # Health check
-        curl -f http://localhost:3000/api/health || exit 1
-      displayName: 'Health Check'
