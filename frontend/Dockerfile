@@ -13,6 +13,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Ensure public directory exists (create if empty)
+RUN mkdir -p ./public
+
 # Accept build argument and set as environment variable
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
@@ -34,8 +37,8 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/public ./public
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
