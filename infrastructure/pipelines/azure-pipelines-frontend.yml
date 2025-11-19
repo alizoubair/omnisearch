@@ -73,55 +73,49 @@ stages:
   displayName: 'Deploy to VMs'
   dependsOn: Build
   jobs:
-  - deployment: DeployFrontend
+  - job: DeployFrontend
     displayName: 'Deploy to Presentation Tier'
-    environment:
-      name: 'development-frontend'
-      resourceType: VirtualMachine
-      tags: 'web'
-    strategy:
-      rolling:
-        maxParallel: 1
-        deploy:
-          steps:
-          - script: |
-              # Login to ACR
-              echo $(ACR_PASSWORD) | docker login $(acrName).azurecr.io -u $(ACR_USERNAME) --password-stdin
-              
-              # Pull latest image
-              docker pull $(acrName).azurecr.io/$(imageName):$(imageTag)
-              
-              # Stop and remove old container
-              docker stop omnisearch-frontend || true
-              docker rm omnisearch-frontend || true
-              
-              # Run new container with all required environment variables
-              docker run -d \
-                --name omnisearch-frontend \
-                --restart unless-stopped \
-                -p 3000:3000 \
-                -e NEXT_PUBLIC_API_BASE_URL=$(NEXT_PUBLIC_API_BASE_URL) \
-                -e NEXTAUTH_URL=$(NEXTAUTH_URL) \
-                -e NEXTAUTH_SECRET=$(NEXTAUTH_SECRET) \
-                -e AZURE_AD_CLIENT_ID=$(AZURE_AD_CLIENT_ID) \
-                -e AZURE_AD_CLIENT_SECRET=$(AZURE_AD_CLIENT_SECRET) \
-                -e AZURE_AD_TENANT_ID=$(AZURE_AD_TENANT_ID) \
-                -e AI_SEARCH_ENDPOINT=$(AI_SEARCH_ENDPOINT) \
-                -e AI_SEARCH_KEY=$(AI_SEARCH_KEY) \
-                -e OPENAI_ENDPOINT=$(OPENAI_ENDPOINT) \
-                -e OPENAI_KEY=$(OPENAI_KEY) \
-                -e STORAGE_CONNECTION_STRING=$(STORAGE_CONNECTION_STRING) \
-                -e DATABASE_URL=$(DATABASE_URL) \
-                $(acrName).azurecr.io/$(imageName):$(imageTag)
-              
-              # Cleanup old images
-              docker image prune -f
-            displayName: 'Deploy Docker Container'
-          
-          - script: |
-              # Wait for container to be healthy
-              sleep 10
-              
-              # Health check
-              curl -f http://localhost:3000/api/health || exit 1
-            displayName: 'Health Check'
+    pool:
+      name: 'frontend-vms'  # Deploy directly on self-hosted agents
+    steps:
+    - script: |
+        # Login to ACR
+        echo $(ACR_PASSWORD) | docker login $(acrName).azurecr.io -u $(ACR_USERNAME) --password-stdin
+        
+        # Pull latest image
+        docker pull $(acrName).azurecr.io/$(imageName):$(imageTag)
+        
+        # Stop and remove old container
+        docker stop omnisearch-frontend || true
+        docker rm omnisearch-frontend || true
+        
+        # Run new container with all required environment variables
+        docker run -d \
+          --name omnisearch-frontend \
+          --restart unless-stopped \
+          -p 3000:3000 \
+          -e NEXT_PUBLIC_API_BASE_URL=$(NEXT_PUBLIC_API_BASE_URL) \
+          -e NEXTAUTH_URL=$(NEXTAUTH_URL) \
+          -e NEXTAUTH_SECRET=$(NEXTAUTH_SECRET) \
+          -e AZURE_AD_CLIENT_ID=$(AZURE_AD_CLIENT_ID) \
+          -e AZURE_AD_CLIENT_SECRET=$(AZURE_AD_CLIENT_SECRET) \
+          -e AZURE_AD_TENANT_ID=$(AZURE_AD_TENANT_ID) \
+          -e AI_SEARCH_ENDPOINT=$(AI_SEARCH_ENDPOINT) \
+          -e AI_SEARCH_KEY=$(AI_SEARCH_KEY) \
+          -e OPENAI_ENDPOINT=$(OPENAI_ENDPOINT) \
+          -e OPENAI_KEY=$(OPENAI_KEY) \
+          -e STORAGE_CONNECTION_STRING=$(STORAGE_CONNECTION_STRING) \
+          -e DATABASE_URL=$(DATABASE_URL) \
+          $(acrName).azurecr.io/$(imageName):$(imageTag)
+        
+        # Cleanup old images
+        docker image prune -f
+      displayName: 'Deploy Docker Container'
+    
+    - script: |
+        # Wait for container to be healthy
+        sleep 10
+        
+        # Health check
+        curl -f http://localhost:3000/api/health || exit 1
+      displayName: 'Health Check'
