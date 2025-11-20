@@ -25,9 +25,15 @@ pool:
   name: 'frontend-vms'  # Self-hosted agent pool (matches frontend_deployment_group_name)
 
 variables:
-  acrName: '$(ACR_NAME)'  # Set in pipeline variables
-  imageName: 'omnisearch-frontend'
-  imageTag: '$(Build.BuildId)'
+- group: 'Secrets'
+- group: 'Development-Variables'
+- group: 'Common-Variables'
+- name: acrName
+  value: '$(ACR_NAME)'
+- name: imageName
+  value: 'omnisearch-frontend'
+- name: imageTag
+  value: '$(Build.BuildId)'
 
 stages:
 - stage: Build
