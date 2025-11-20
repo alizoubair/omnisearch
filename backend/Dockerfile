@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for FastAPI Backend
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # Set build arguments
 ARG ENVIRONMENT=production
@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Production stage
-FROM python:3.12-slim as production
+FROM python:3.12-slim AS production
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -43,9 +43,9 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy application code
 COPY --chown=appuser:appuser app/ ./app/
 COPY --chown=appuser:appuser run.py ./
-COPY --chown=appuser:appuser .env ./.env
 
 # Set environment variables
+# Note: Environment variables are passed at runtime via docker run -e flags
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
