@@ -48,6 +48,29 @@ stages:
         command: login
         containerRegistry: '$(ACR_SERVICE_CONNECTION)'
     
+    - script: |
+        echo "##[section]Checking required environment variables..."
+        echo "NEXT_PUBLIC_API_BASE_URL value: $(NEXT_PUBLIC_API_BASE_URL)"
+        echo "ACR_NAME value: $(ACR_NAME)"
+        
+        # Fail if NEXT_PUBLIC_API_BASE_URL is empty
+        if [ -z "$(NEXT_PUBLIC_API_BASE_URL)" ]; then
+          echo "##[error]NEXT_PUBLIC_API_BASE_URL is empty or not set!"
+          echo "##[error]This variable is required for Next.js build and must be set in the 'Secrets' variable group."
+          echo "##[error]Please ensure Terraform has created/updated the variable group with this value."
+          exit 1
+        fi
+        
+        # Fail if ACR_NAME is empty
+        if [ -z "$(ACR_NAME)" ]; then
+          echo "##[error]ACR_NAME is empty or not set!"
+          echo "##[error]This variable is required and must be set in the 'Development-Variables' variable group."
+          exit 1
+        fi
+        
+        echo "##[section]All required variables are set successfully!"
+      displayName: 'Validate Required Variables'
+    
     - task: Docker@2
       displayName: 'Build Docker Image'
       inputs:
