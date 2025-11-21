@@ -196,20 +196,18 @@ stages:
         # Create .env.production file inside container as backup
         # This ensures Next.js can read variables even if env vars don't work
         echo "##[section]Creating .env.production file in container..."
-        docker exec omnisearch-frontend sh -c "cat > /app/.env.production <<EOF
-NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL_VAL
-NEXTAUTH_URL=$NEXTAUTH_URL_VAL
-NEXTAUTH_SECRET=$NEXTAUTH_SECRET_VAL
-AZURE_AD_CLIENT_ID=$AZURE_AD_CLIENT_ID_VAL
-AZURE_AD_CLIENT_SECRET=$AZURE_AD_CLIENT_SECRET_VAL
-AZURE_AD_TENANT_ID=$AZURE_AD_TENANT_ID_VAL
-AI_SEARCH_ENDPOINT=$AI_SEARCH_ENDPOINT_VAL
-AI_SEARCH_KEY=$AI_SEARCH_KEY_VAL
-OPENAI_ENDPOINT=$OPENAI_ENDPOINT_VAL
-OPENAI_KEY=$OPENAI_KEY_VAL
-STORAGE_CONNECTION_STRING=$STORAGE_CONNECTION_STRING_VAL
-DATABASE_URL=$DATABASE_URL_VAL
-EOF" || echo "##[warning]Could not create .env.production file in container"
+        docker exec omnisearch-frontend sh -c "echo 'NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL_VAL' > /app/.env.production && \
+          echo 'NEXTAUTH_URL=$NEXTAUTH_URL_VAL' >> /app/.env.production && \
+          echo 'NEXTAUTH_SECRET=$NEXTAUTH_SECRET_VAL' >> /app/.env.production && \
+          echo 'AZURE_AD_CLIENT_ID=$AZURE_AD_CLIENT_ID_VAL' >> /app/.env.production && \
+          echo 'AZURE_AD_CLIENT_SECRET=$AZURE_AD_CLIENT_SECRET_VAL' >> /app/.env.production && \
+          echo 'AZURE_AD_TENANT_ID=$AZURE_AD_TENANT_ID_VAL' >> /app/.env.production && \
+          echo 'AI_SEARCH_ENDPOINT=$AI_SEARCH_ENDPOINT_VAL' >> /app/.env.production && \
+          echo 'AI_SEARCH_KEY=$AI_SEARCH_KEY_VAL' >> /app/.env.production && \
+          echo 'OPENAI_ENDPOINT=$OPENAI_ENDPOINT_VAL' >> /app/.env.production && \
+          echo 'OPENAI_KEY=$OPENAI_KEY_VAL' >> /app/.env.production && \
+          echo 'STORAGE_CONNECTION_STRING=$STORAGE_CONNECTION_STRING_VAL' >> /app/.env.production && \
+          echo 'DATABASE_URL=$DATABASE_URL_VAL' >> /app/.env.production" || echo "##[warning]Could not create .env.production file in container"
         
         # Restart container to pick up .env file (if environment variables don't work)
         echo "##[section]Restarting container to ensure .env file is loaded..."
