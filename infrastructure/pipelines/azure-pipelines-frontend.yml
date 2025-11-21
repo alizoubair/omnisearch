@@ -108,6 +108,28 @@ stages:
       name: 'frontend-vms'  # Deploy directly on self-hosted agents
     steps:
     - script: |
+        echo "##[section]Validating deployment variables..."
+        echo "Checking if NEXT_PUBLIC_API_BASE_URL is set..."
+        if [ -z "$(NEXT_PUBLIC_API_BASE_URL)" ]; then
+          echo "##[error]NEXT_PUBLIC_API_BASE_URL is empty or not set!"
+          echo "##[error]This variable must be set in the 'Secrets' variable group."
+          exit 1
+        fi
+        echo "NEXT_PUBLIC_API_BASE_URL is set (length: $(echo -n '$(NEXT_PUBLIC_API_BASE_URL)' | wc -c))"
+        
+        echo "Checking if NEXTAUTH_SECRET is set..."
+        if [ -z "$(NEXTAUTH_SECRET)" ]; then
+          echo "##[error]NEXTAUTH_SECRET is empty or not set!"
+          echo "##[error]This variable must be set in the 'Secrets' variable group."
+          echo "##[error]Please set it manually in Azure DevOps or via Terraform."
+          exit 1
+        fi
+        echo "NEXTAUTH_SECRET is set (length: $(echo -n '$(NEXTAUTH_SECRET)' | wc -c))"
+        
+        echo "##[section]All required variables are set. Proceeding with deployment..."
+      displayName: 'Validate Deployment Variables'
+    
+    - script: |
         # Login to ACR
         echo $(ACR_PASSWORD) | docker login $(acrName).azurecr.io -u $(ACR_USERNAME) --password-stdin
         
@@ -136,6 +158,18 @@ stages:
           -e STORAGE_CONNECTION_STRING=$(STORAGE_CONNECTION_STRING) \
           -e DATABASE_URL=$(DATABASE_URL) \
           $(acrName).azurecr.io/$(imageName):$(imageTag)
+        
+        echo "##[section]Waiting for container to start..."
+        sleep 5
+        
+        echo "##[section]Checking container status..."
+        docker ps -a --filter name=omnisearch-frontend --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+        
+        echo "##[section]Verifying environment variables in container..."
+        docker exec omnisearch-frontend printenv | grep -E "(NEXT_PUBLIC_API_BASE_URL|NEXTAUTH_SECRET|NEXTAUTH_URL)" || echo "##[warning]Container may not be ready yet"
+        
+        echo "##[section]Showing last 30 lines of container logs..."
+        docker logs omnisearch-frontend --tail 30 || echo "##[warning]Could not read container logs"
         
         # Cleanup old images
         docker image prune -f
