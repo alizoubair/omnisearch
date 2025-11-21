@@ -29,6 +29,9 @@ FROM node:18-alpine AS production
 # Set working directory
 WORKDIR /app
 
+# Set environment variable for runtime (will be overridden by -e flag if provided)
+ENV NEXT_PUBLIC_API_BASE_URL=""
+
 # Copy package files
 COPY package.json ./
 
