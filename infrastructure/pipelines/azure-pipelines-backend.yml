@@ -72,6 +72,16 @@ stages:
   displayName: 'Deploy to VMs'
   dependsOn: Build
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  variables:
+  - group: 'Secrets'
+  - group: 'Development-Variables'
+  - group: 'Common-Variables'
+  - name: acrName
+    value: '$(ACR_NAME)'
+  - name: imageName
+    value: 'omnisearch-backend'
+  - name: imageTag
+    value: '$(Build.BuildId)'
   jobs:
   - job: DeployBackend
     displayName: 'Deploy to Application Tier'
@@ -92,7 +102,7 @@ stages:
         # Run database migrations (if needed)
         docker run --rm \
           --network host \
-          -e DATABASE_URL=$(DATABASE_URL) \
+          -e DATABASE_URL="$(DATABASE_URL)" \
           $(acrName).azurecr.io/$(imageName):$(imageTag) \
           alembic upgrade head
         
@@ -101,12 +111,12 @@ stages:
           --name omnisearch-backend \
           --restart unless-stopped \
           -p 8000:8000 \
-          -e DATABASE_URL=$(DATABASE_URL) \
-          -e OPENAI_API_KEY=$(OPENAI_API_KEY) \
-          -e AZURE_SEARCH_ENDPOINT=$(AZURE_SEARCH_ENDPOINT) \
-          -e AZURE_SEARCH_KEY=$(AZURE_SEARCH_KEY) \
-          -e AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT) \
-          -e AZURE_DOCUMENT_INTELLIGENCE_KEY=$(AZURE_DOCUMENT_INTELLIGENCE_KEY) \
+          -e DATABASE_URL="$(DATABASE_URL)" \
+          -e OPENAI_API_KEY="$(OPENAI_API_KEY)" \
+          -e AZURE_SEARCH_ENDPOINT="$(AZURE_SEARCH_ENDPOINT)" \
+          -e AZURE_SEARCH_KEY="$(AZURE_SEARCH_KEY)" \
+          -e AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT="$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT)" \
+          -e AZURE_DOCUMENT_INTELLIGENCE_KEY="$(AZURE_DOCUMENT_INTELLIGENCE_KEY)" \
           $(acrName).azurecr.io/$(imageName):$(imageTag)
         
         # Cleanup old images
