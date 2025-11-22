@@ -103,22 +103,20 @@ stages:
         # This safely handles special characters like $, (, ), [, ], * in passwords
         ENV_FILE=$(mktemp)
         PYTHON_SCRIPT=$(mktemp)
-        cat > "$PYTHON_SCRIPT" << 'PYTHON_EOF'
-import os
-import sys
-env_file = sys.argv[1]
-env_vars = {
-    'DATABASE_URL': os.environ.get('DATABASE_URL', ''),
-    'OPENAI_API_KEY': os.environ.get('OPENAI_API_KEY', ''),
-    'AZURE_SEARCH_ENDPOINT': os.environ.get('AZURE_SEARCH_ENDPOINT', ''),
-    'AZURE_SEARCH_KEY': os.environ.get('AZURE_SEARCH_KEY', ''),
-    'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT', ''),
-    'AZURE_DOCUMENT_INTELLIGENCE_KEY': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_KEY', '')
-}
-with open(env_file, 'w') as f:
-    for key, value in env_vars.items():
-        f.write('{}={}\n'.format(key, value))
-PYTHON_EOF
+        echo 'import os' > "$PYTHON_SCRIPT"
+        echo 'import sys' >> "$PYTHON_SCRIPT"
+        echo 'env_file = sys.argv[1]' >> "$PYTHON_SCRIPT"
+        echo "env_vars = {" >> "$PYTHON_SCRIPT"
+        echo "    'DATABASE_URL': os.environ.get('DATABASE_URL', '')," >> "$PYTHON_SCRIPT"
+        echo "    'OPENAI_API_KEY': os.environ.get('OPENAI_API_KEY', '')," >> "$PYTHON_SCRIPT"
+        echo "    'AZURE_SEARCH_ENDPOINT': os.environ.get('AZURE_SEARCH_ENDPOINT', '')," >> "$PYTHON_SCRIPT"
+        echo "    'AZURE_SEARCH_KEY': os.environ.get('AZURE_SEARCH_KEY', '')," >> "$PYTHON_SCRIPT"
+        echo "    'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT', '')," >> "$PYTHON_SCRIPT"
+        echo "    'AZURE_DOCUMENT_INTELLIGENCE_KEY': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_KEY', '')" >> "$PYTHON_SCRIPT"
+        echo "}" >> "$PYTHON_SCRIPT"
+        echo "with open(env_file, 'w') as f:" >> "$PYTHON_SCRIPT"
+        echo "    for key, value in env_vars.items():" >> "$PYTHON_SCRIPT"
+        echo "        f.write('{}={}\\n'.format(key, value))" >> "$PYTHON_SCRIPT"
         python3 "$PYTHON_SCRIPT" "$ENV_FILE"
         rm -f "$PYTHON_SCRIPT"
         
