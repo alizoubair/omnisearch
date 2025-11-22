@@ -5,6 +5,7 @@ Database configuration and connection
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 import logging
+import traceback
 
 from app.core.config import settings
 
@@ -62,6 +63,18 @@ async def get_db() -> AsyncSession:
 async def init_db():
     """Initialize database"""
     try:
+        # Log DATABASE_URL
+        db_url_masked = settings.DATABASE_URL
+        if '@' in db_url_masked:
+            # Mask password in connection string
+            parts = db_url_masked.split('@')
+            if ':' in parts[0]:
+                user_pass = parts[0].split('://')[1] if '://' in parts[0] else parts[0]
+                if ':' in user_pass:
+                    user, _ = user_pass.split(':', 1)
+                    db_url_masked = db_url_masked.split('://')[0] + '://' + user + ':***@' + '@'.join(parts[1:])
+        logger.info(f"🔗 Attempting database connection to: {db_url_masked}")
+        
         # Test connection
         engine = get_engine()
         async with engine.begin() as conn:
@@ -77,5 +90,8 @@ async def init_db():
             
         logger.info("✅ Database connection established")
     except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
+        error_type = type(e).__name__
+        error_msg = str(e) if str(e) else "No error message"
+        logger.error(f"❌ Database initialization failed: {error_type}: {error_msg}")
+        logger.error(f"📋 Full traceback:\n{traceback.format_exc()}")
         raise
