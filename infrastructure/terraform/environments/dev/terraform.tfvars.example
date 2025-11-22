@@ -1,0 +1,222 @@
+# Remote State Configuration
+# Set to false after remote state is created to prevent destruction
+create_remote_state = true
+remote_state_storage_account_name = "yourstorageaccountname"
+remote_state_container_name = "tfstate"
+
+# Common Configuration
+resource_group_name = "rg-omnisearch-dev"
+location            = "West US"
+common_tags = {
+  Project     = "Omnisearch AI Services"
+  Environment = "Development"
+  Owner       = "DevOps Team"
+  ManagedBy   = "Terraform"
+  Purpose     = "Document Processing"
+}
+
+# Networking Configuration
+vnet_name          = "vnet-omnisearch-dev"
+vnet_address_space = ["10.0.0.0/16"]
+
+presentation_subnet_name     = "snet-omnisearch-web-dev"
+presentation_subnet_prefixes = ["10.0.1.0/24"]
+application_subnet_name      = "snet-omnisearch-api-dev"
+application_subnet_prefixes  = ["10.0.2.0/24"]
+data_subnet_name             = "snet-omnisearch-db-dev"
+data_subnet_prefixes         = ["10.0.3.0/24"]
+
+# Optional Subnets
+create_bastion_subnet     = true  # Enable Bastion for SSH access to troubleshoot
+create_app_gateway_subnet = true  # Keep for Application Gateway
+
+# Application Gateway Configuration
+create_application_gateway = true
+enable_https_listener      = false # Disable HTTPS for dev environment
+
+# Cost Optimization Settings - Application Gateway Standard_Small
+application_gateway_name           = "agw-omnisearch-dev"
+application_gateway_public_ip_name = "pip-agw-omnisearch-dev"
+application_gateway_sku_name       = "Standard_v2"
+application_gateway_sku_tier       = "Standard_v2" # Standard_v2 tier (Standard is deprecated)
+application_gateway_capacity       = 1         # Minimum capacity for dev
+application_gateway_min_capacity   = 1         # Minimum for autoscaling
+application_gateway_max_capacity   = 2         # Maximum for autoscaling
+enable_app_gateway_autoscaling     = false      # Disable autoscaling for dev to save costs
+
+# NAT Gateway Configuration
+create_nat_gateway             = true
+nat_gateway_zones              = [] # Some regions don't support availability zones - leave empty
+associate_nat_with_application = true
+
+# Availability Zones Configuration
+# Some regions don't support availability zones - leave empty
+availability_zones = []
+
+# Load Balancer Configuration
+create_internal_lb         = true
+internal_lb_name           = "lb-omnisearch-api-dev"
+internal_lb_private_ip     = "10.0.2.100"
+internal_lb_probe_path     = "/api/health"
+internal_lb_frontend_port  = 80
+internal_lb_backend_port   = 8000
+internal_lb_probe_port     = 8000
+enable_internal_https_rule = false
+
+# NAT Pool for SSH Access (optional)
+enable_nat_pool              = true
+nat_pool_frontend_port_start = 50000
+nat_pool_frontend_port_end   = 50010 # Smaller range for dev
+nat_pool_backend_port        = 22
+
+# Authentication Configuration
+admin_username = "azureuser"
+ssh_public_key = "ssh-rsa YOUR_SSH_PUBLIC_KEY_HERE"
+
+# Presentation Tier Configuration (Web Servers)
+create_presentation_vmss    = true
+presentation_vmss_name      = "vmss-omnisearch-web-dev"
+presentation_os_type        = "Linux"
+presentation_vm_sku         = "Standard_B2s" # Increased to B2s (2 vCPU, 4 GB RAM) for Docker builds
+presentation_instance_count = 1              # Single instance for dev due to quota
+presentation_min_instances  = 1
+presentation_max_instances  = 3 # Limited scaling for dev
+
+# Disk Configuration - Standard SSD for cost savings
+presentation_os_disk_type    = "StandardSSD_LRS" # Standard SSD instead of Premium
+presentation_os_disk_size_gb = 30                # Keep 30GB as minimum for Ubuntu
+
+# Application Tier Configuration (API Servers)
+create_application_vmss    = true
+application_vmss_name      = "vmss-omnisearch-api-dev"
+application_os_type        = "Linux"
+application_vm_sku         = "Standard_B2s" # Smaller size for API processing to fit quota
+application_instance_count = 1              # Single instance for dev due to quota
+application_min_instances  = 1
+application_max_instances  = 5 # More scaling for API tier
+
+# Application Tier Disk Configuration
+application_os_disk_type    = "StandardSSD_LRS" # Standard SSD for cost savings
+application_os_disk_size_gb = 30                # 30GB for API servers
+
+# Auto-scaling Configuration
+enable_autoscaling                   = true
+presentation_scale_out_cpu_threshold = 80 # Higher threshold for dev
+presentation_scale_in_cpu_threshold  = 20 # Lower threshold for dev
+application_scale_out_cpu_threshold  = 75
+application_scale_in_cpu_threshold   = 25
+
+# DNS Configuration (removed - using public network access for database)
+public_domain_name     = ""
+
+# Key Vault Configuration
+create_key_vault                        = true
+key_vault_name                          = "kv-omnisearch-dev"  # Max 24 chars
+key_vault_sku_name                      = "standard"
+purge_protection_enabled                = false # Disabled for dev to allow cleanup
+soft_delete_retention_days              = 7     # Minimum for dev
+key_vault_public_network_access_enabled = false
+
+# Database Configuration - Optimized for Development
+create_database     = true  # Enable database deployment
+primary_server_name = "psql-omnisearch-dev"
+administrator_login = "pgadmin"
+# administrator_password = ""  # Will be auto-generated
+
+# Development-Optimized Settings (Cost Savings)
+postgresql_version           = "14"              # PostgreSQL 14 (stable, cost-effective)
+primary_sku_name             = "B_Standard_B1ms" # Burstable SKU - lowest cost for dev (~$1.67/day)
+primary_storage_mb           = 32768             # Minimum storage: 32 GB (lowest cost option)
+create_read_replica          = false             # No read replica - saves 50%+ costs
+replica_server_name          = ""
+replica_location             = ""
+database_name                = "omnisearch_dev"
+
+# Backup Configuration
+backup_retention_days        = 7                # Minimum retention (7 days) - saves storage costs
+geo_redundant_backup_enabled = false            # Disabled for dev - saves ~$0.50/day
+
+# High Availability - Disabled for Development
+enable_high_availability     = false            # Disabled - saves ~$1.50/day
+high_availability_mode       = "ZoneRedundant"  # Not used when HA is disabled
+
+# Maintenance Window - Off-Peak Hours
+maintenance_window_enabled   = true             # Scheduled maintenance
+maintenance_day_of_week      = 6                # Saturday (off-peak)
+maintenance_start_hour        = 22               # 10 PM (off-peak hours)
+
+# Monitoring Configuration
+create_log_analytics_workspace = true # Required for Application Insights
+log_analytics_workspace_name   = "law-omnisearch-ai-dev"  # Keep existing name
+log_analytics_retention_days   = 30 # Minimum allowed by Azure
+application_insights_name      = "ai-omnisearch-dev"  # Keep existing name
+
+# AI Services Configuration
+create_ai_services = false  # Disabled until needed later
+ai_project_name   = "omnisearch"  # Keep existing naming
+
+# AI Services Configuration - Complete Omnisearch AI Document Search Stack
+enable_openai                = false  # Disabled until needed later
+enable_openai_deployments     = false  # Disabled until needed later
+enable_document_intelligence = false  # Disabled until needed later
+
+# OpenAI Configuration (when enabled)
+openai_location = "East US 2"
+openai_sku      = "S0"      # Standard pricing tier
+
+# Document Intelligence Configuration (when enabled)
+document_intelligence_sku = "F0" # Free tier for development (20 pages/month)
+
+# AI Search Configuration - Optimized for Development
+ai_search_sku                   = "basic"     # Basic SKU for 70% cost savings ($2.50/day vs $8.33/day)
+ai_search_public_access_enabled = true        # Keep public access for development
+ai_search_index_name            = "documents" # Default index name
+
+# Container Registry Configuration
+create_container_registry           = true
+acr_name                            = "acromnisearchdev"  # Must be globally unique, lowercase, alphanumeric
+acr_sku                             = "Standard"
+acr_admin_enabled                   = true
+acr_public_network_access_enabled   = true
+
+# Azure DevOps Configuration
+create_azure_devops = true
+devops_url          = "https://dev.azure.com/your-org"
+devops_pat          = "YOUR_AZURE_DEVOPS_PAT_TOKEN_HERE"
+# service_principal_secret - No longer needed, created automatically in the module
+
+# Branch Policies and Environments - Removed
+# Branch policies don't work with external GitHub repositories (use GitHub branch protection instead)
+# Environments are auto-created by Azure DevOps when pipelines run
+
+# External Repository Configuration (GitHub)
+# Set use_external_repository = true to use GitHub instead of Azure DevOps repository
+devops_use_external_repository = true
+devops_external_repository_url = "owner/repo"  # Format: owner/repo
+
+# GitHub Service Connection Configuration
+# Option 1: Auto-create service connection using GitHub PAT (Recommended)
+# Create a GitHub PAT at: https://github.com/settings/tokens
+# Required scopes: 'repo' (Full control of private repositories)
+devops_github_personal_access_token = "YOUR_GITHUB_PAT_TOKEN_HERE"
+devops_github_service_connection_name = ""  # Optional: defaults to "GitHub-{project_name}"
+
+# Option 2: Use existing service connection (if already created manually)
+# Leave empty if using Option 1 (auto-create)
+devops_external_repository_service_connection_id = ""  # Only set if NOT using auto-creation
+
+# Application Gateway Backend Configuration
+application_gateway_backend_port       = 3000
+application_gateway_backend_https_port = 3000
+application_gateway_probe_path         = "/api/health"  # Frontend health check endpoint
+
+# Managed DevOps Pool Configuration - DISABLED (using self-hosted agents on VMSS)
+create_managed_devops_pool_subnet = false
+enable_managed_devops_pool       = false
+managed_pool_name                = ""
+managed_pool_maximum_concurrency = 0
+
+# Self-hosted agent pool names
+frontend_agent_pool_name = "frontend-vms"
+backend_agent_pool_name = "backend-vms"
+
