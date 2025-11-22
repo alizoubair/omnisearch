@@ -99,16 +99,28 @@ stages:
         docker stop omnisearch-backend || true
         docker rm omnisearch-backend || true
         
-        # Create environment file to avoid shell interpretation of special characters
-        # This is the safest way to handle passwords with special characters like $, (, ), [, ], *
-        # Use printf to write each variable with proper escaping
+        # Create environment file using Python to avoid shell interpretation
+        # This safely handles special characters like $, (, ), [, ], * in passwords
         ENV_FILE=$(mktemp)
-        printf 'DATABASE_URL=%s\n' "$(DATABASE_URL)" > "$ENV_FILE"
-        printf 'OPENAI_API_KEY=%s\n' "$(OPENAI_API_KEY)" >> "$ENV_FILE"
-        printf 'AZURE_SEARCH_ENDPOINT=%s\n' "$(AZURE_SEARCH_ENDPOINT)" >> "$ENV_FILE"
-        printf 'AZURE_SEARCH_KEY=%s\n' "$(AZURE_SEARCH_KEY)" >> "$ENV_FILE"
-        printf 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=%s\n' "$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT)" >> "$ENV_FILE"
-        printf 'AZURE_DOCUMENT_INTELLIGENCE_KEY=%s\n' "$(AZURE_DOCUMENT_INTELLIGENCE_KEY)" >> "$ENV_FILE"
+        python3 <<PYEOF
+import os
+import sys
+
+# Read variables from environment (Azure DevOps sets these)
+env_vars = {
+    'DATABASE_URL': os.environ.get('DATABASE_URL', ''),
+    'OPENAI_API_KEY': os.environ.get('OPENAI_API_KEY', ''),
+    'AZURE_SEARCH_ENDPOINT': os.environ.get('AZURE_SEARCH_ENDPOINT', ''),
+    'AZURE_SEARCH_KEY': os.environ.get('AZURE_SEARCH_KEY', ''),
+    'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT', ''),
+    'AZURE_DOCUMENT_INTELLIGENCE_KEY': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_KEY', '')
+}
+
+# Write to env file
+with open('$ENV_FILE', 'w') as f:
+    for key, value in env_vars.items():
+        f.write(f'{key}={value}\n')
+PYEOF
         
         # Run database migrations (if needed)
         docker run --rm \
