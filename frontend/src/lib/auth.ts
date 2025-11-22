@@ -16,7 +16,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           // First try to authenticate with the backend to get JWT token
-          const backendUrl = process.env.BACKEND_URL || 'http://backend:8000'
+          const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
           const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
             method: 'POST',
             headers: {

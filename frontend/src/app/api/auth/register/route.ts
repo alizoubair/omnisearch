@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call backend API to register user
-    const backendUrl = process.env.BACKEND_URL || 'http://backend:8000'
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
     const response = await fetch(`${backendUrl}/api/v1/auth/register`, {
       method: 'POST',
       headers: {
