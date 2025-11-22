@@ -99,10 +99,18 @@ stages:
         docker stop omnisearch-backend || true
         docker rm omnisearch-backend || true
         
+        # Store environment variables in shell variables first (to handle special characters properly)
+        DATABASE_URL_VAL="$(DATABASE_URL)"
+        OPENAI_API_KEY_VAL="$(OPENAI_API_KEY)"
+        AZURE_SEARCH_ENDPOINT_VAL="$(AZURE_SEARCH_ENDPOINT)"
+        AZURE_SEARCH_KEY_VAL="$(AZURE_SEARCH_KEY)"
+        AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_VAL="$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT)"
+        AZURE_DOCUMENT_INTELLIGENCE_KEY_VAL="$(AZURE_DOCUMENT_INTELLIGENCE_KEY)"
+        
         # Run database migrations (if needed)
         docker run --rm \
           --network host \
-          -e DATABASE_URL="$(DATABASE_URL)" \
+          -e DATABASE_URL="${DATABASE_URL_VAL}" \
           $(acrName).azurecr.io/$(imageName):$(imageTag) \
           alembic upgrade head
         
@@ -111,12 +119,12 @@ stages:
           --name omnisearch-backend \
           --restart unless-stopped \
           -p 8000:8000 \
-          -e DATABASE_URL="$(DATABASE_URL)" \
-          -e OPENAI_API_KEY="$(OPENAI_API_KEY)" \
-          -e AZURE_SEARCH_ENDPOINT="$(AZURE_SEARCH_ENDPOINT)" \
-          -e AZURE_SEARCH_KEY="$(AZURE_SEARCH_KEY)" \
-          -e AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT="$(AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT)" \
-          -e AZURE_DOCUMENT_INTELLIGENCE_KEY="$(AZURE_DOCUMENT_INTELLIGENCE_KEY)" \
+          -e DATABASE_URL="${DATABASE_URL_VAL}" \
+          -e OPENAI_API_KEY="${OPENAI_API_KEY_VAL}" \
+          -e AZURE_SEARCH_ENDPOINT="${AZURE_SEARCH_ENDPOINT_VAL}" \
+          -e AZURE_SEARCH_KEY="${AZURE_SEARCH_KEY_VAL}" \
+          -e AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT="${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_VAL}" \
+          -e AZURE_DOCUMENT_INTELLIGENCE_KEY="${AZURE_DOCUMENT_INTELLIGENCE_KEY_VAL}" \
           $(acrName).azurecr.io/$(imageName):$(imageTag)
         
         # Cleanup old images
