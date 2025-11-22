@@ -102,11 +102,11 @@ stages:
         # Create environment file using Python to avoid shell interpretation
         # This safely handles special characters like $, (, ), [, ], * in passwords
         ENV_FILE=$(mktemp)
-        python3 <<PYEOF
+        PYTHON_SCRIPT=$(mktemp)
+        cat > "$PYTHON_SCRIPT" << 'PYTHON_EOF'
 import os
 import sys
-
-# Read variables from environment (Azure DevOps sets these)
+env_file = sys.argv[1]
 env_vars = {
     'DATABASE_URL': os.environ.get('DATABASE_URL', ''),
     'OPENAI_API_KEY': os.environ.get('OPENAI_API_KEY', ''),
@@ -115,12 +115,12 @@ env_vars = {
     'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT', ''),
     'AZURE_DOCUMENT_INTELLIGENCE_KEY': os.environ.get('AZURE_DOCUMENT_INTELLIGENCE_KEY', '')
 }
-
-# Write to env file
-with open('$ENV_FILE', 'w') as f:
+with open(env_file, 'w') as f:
     for key, value in env_vars.items():
-        f.write(f'{key}={value}\n')
-PYEOF
+        f.write('{}={}\n'.format(key, value))
+PYTHON_EOF
+        python3 "$PYTHON_SCRIPT" "$ENV_FILE"
+        rm -f "$PYTHON_SCRIPT"
         
         # Run database migrations (if needed)
         docker run --rm \
