@@ -137,22 +137,14 @@ stages:
         echo "NEXTAUTH_SECRET is set (length: $(echo -n '$(NEXTAUTH_SECRET)' | wc -c))"
         
         echo "Checking if NEXTAUTH_URL is set..."
-        NEXTAUTH_URL_VAL="$(NEXTAUTH_URL)"
-        if [ -z "$NEXTAUTH_URL_VAL" ]; then
-          echo "##[warning]NEXTAUTH_URL is empty, attempting to construct from Application Gateway..."
-          # Try to get Application Gateway public IP
-          APP_GW_PUBLIC_IP="$(APPLICATION_GATEWAY_PUBLIC_IP)"
-          if [ -n "$APP_GW_PUBLIC_IP" ]; then
-            NEXTAUTH_URL_VAL="http://${APP_GW_PUBLIC_IP}"
-            echo "##[section]Constructed NEXTAUTH_URL from Application Gateway IP: $NEXTAUTH_URL_VAL"
-          else
-            echo "##[error]NEXTAUTH_URL is empty and could not be constructed!"
-            echo "##[error]Please set NEXTAUTH_URL in the 'Common-Variables' variable group."
-            echo "##[error]NEXTAUTH_URL should be the public URL of the application (e.g., http://<app-gateway-ip> or https://your-domain.com)"
-            exit 1
-          fi
+        if [ -z "$(NEXTAUTH_URL)" ]; then
+          echo "##[error]NEXTAUTH_URL is empty or not set!"
+          echo "##[error]This variable must be set in the 'Common-Variables' variable group."
+          echo "##[error]Terraform should set it automatically to: http://<application-gateway-public-ip>"
+          echo "##[error]Please verify Terraform has been applied, or set it manually in Azure DevOps."
+          exit 1
         fi
-        echo "NEXTAUTH_URL is set: $NEXTAUTH_URL_VAL"
+        echo "NEXTAUTH_URL is set: $(NEXTAUTH_URL)"
         
         echo "##[section]All required variables are set. Proceeding with deployment..."
       displayName: 'Validate Deployment Variables'
