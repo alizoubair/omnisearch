@@ -20,9 +20,9 @@ pr:
 # Self-hosted agent pool (uses VMs from application tier)
 # Agents are automatically installed via VM extensions
 # Pool name must match the deployment group name configured in Terraform
-# Default: 'backend-vms' (can be changed in terraform.tfvars)
+# Default: 'backend-vms-dev' (can be changed in terraform.tfvars)
 pool:
-  name: 'backend-vms'  # Self-hosted agent pool (matches backend_deployment_group_name)
+  name: 'backend-vms-dev'  # Self-hosted agent pool (matches backend_agent_pool_name)
 
 variables:
   acrName: '$(ACR_NAME)'  # Set in pipeline variables
@@ -86,7 +86,7 @@ stages:
   - job: DeployBackend
     displayName: 'Deploy to Application Tier'
     pool:
-      name: 'backend-vms'  # Deploy directly on self-hosted agents
+      name: 'backend-vms-dev'  # Deploy directly on self-hosted agents
     steps:
     - script: |
         # Login to ACR

@@ -20,9 +20,9 @@ pr:
 # Self-hosted agent pool (uses VMs from presentation tier)
 # Agents are automatically installed via VM extensions
 # Pool name must match the deployment group name configured in Terraform
-# Default: 'frontend-vms' (can be changed in terraform.tfvars)
+# Default: 'frontend-vms-dev' (can be changed in terraform.tfvars)
 pool:
-  name: 'frontend-vms'  # Self-hosted agent pool (matches frontend_deployment_group_name)
+  name: 'frontend-vms-dev'  # Self-hosted agent pool (matches frontend_agent_pool_name)
 
 variables:
 - group: 'Secrets'
@@ -115,7 +115,7 @@ stages:
   - job: DeployFrontend
     displayName: 'Deploy to Presentation Tier'
     pool:
-      name: 'frontend-vms'  # Deploy directly on self-hosted agents
+      name: 'frontend-vms-dev'  # Deploy directly on self-hosted agents
     steps:
     - script: |
         echo "##[section]Validating deployment variables..."
