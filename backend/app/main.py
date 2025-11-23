@@ -27,6 +27,16 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("🚀 Starting Omnisearch Backend...")
+    
+    # Ensure uploads directory exists with proper permissions
+    from pathlib import Path
+    uploads_dir = Path("/app/uploads")
+    try:
+        uploads_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+        logger.info(f"✅ Uploads directory ready: {uploads_dir}")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not create uploads directory: {e}")
+    
     try:
         await init_db()
         logger.info("✅ Database initialized")

@@ -249,9 +249,13 @@ class DocumentService:
     async def save_file(self, file_content: bytes, filename: str, user_id: uuid.UUID) -> Optional[str]:
         """Save uploaded file to storage"""
         try:
+            # Use absolute path to ensure we're in the app directory
+            base_dir = Path("/app/uploads")
+            base_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+            
             # Create user directory
-            user_dir = Path(f"uploads/{user_id}")
-            user_dir.mkdir(parents=True, exist_ok=True)
+            user_dir = base_dir / str(user_id)
+            user_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
             
             # Generate unique filename
             file_path = user_dir / f"{uuid.uuid4()}_{filename}"
@@ -265,6 +269,8 @@ class DocumentService:
             
         except Exception as e:
             logger.error(f"File save error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
     
     async def _delete_file(self, file_path: str) -> bool:
