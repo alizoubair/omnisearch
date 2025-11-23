@@ -16,7 +16,10 @@ export const authOptions: NextAuthOptions = {
 
         try {
           // First try to authenticate with the backend to get JWT token
-          const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+          // Use BACKEND_API_URL for server-side calls in Docker Compose (http://backend:8000)
+          // In Azure, BACKEND_API_URL is not set, so it falls back to NEXT_PUBLIC_API_BASE_URL (Internal Load Balancer IP)
+          // Fallback to localhost for local development outside Docker
+          const backendUrl = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
           const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
             method: 'POST',
             headers: {
