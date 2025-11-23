@@ -20,12 +20,15 @@ CREATE TABLE IF NOT EXISTS users (
 -- Documents table
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(255) NOT NULL,
-    content TEXT,
-    file_path VARCHAR(500),
-    file_size INTEGER,
-    mime_type VARCHAR(100),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    file_size INTEGER NOT NULL,
+    storage_path TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'uploading',
+    content TEXT,
+    doc_metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

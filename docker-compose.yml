@@ -21,6 +21,65 @@ services:
     networks:
       - omnisearch-network
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omnisearch-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://omnisearch:omnisearch_dev_password@postgres:5432/omnisearch_dev
+      SECRET_KEY: dev-secret-key-change-in-production
+      DEBUG: "true"
+      ENVIRONMENT: development
+      # Azure AI Services (optional for local dev)
+      AZURE_OPENAI_ENDPOINT: ""
+      AZURE_OPENAI_API_KEY: ""
+      AZURE_SEARCH_ENDPOINT: ""
+      AZURE_SEARCH_API_KEY: ""
+      AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: ""
+      AZURE_DOCUMENT_INTELLIGENCE_API_KEY: ""
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/uploads:/app/uploads
+    # Use reload for development
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - omnisearch-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(1); s.connect(('localhost', 8000)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: node:18-alpine
+    container_name: omnisearch-frontend
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      # Client-side API URL (browser uses localhost)
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      # Server-side API URL (Next.js server uses Docker service name)
+      BACKEND_API_URL: http://backend:8000
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: dev-nextauth-secret-change-in-production
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+    # Run dev server (dependencies should be installed locally)
+    command: sh -c "npm run dev"
+    depends_on:
+      - backend
+    networks:
+      - omnisearch-network
+
 volumes:
   postgres_data:
 
