@@ -1,6 +1,12 @@
-# 🔍 Omnisearch - AI-Powered Document Search App
+# Omnisearch - AI-Powered Document Search App
 
-Omnisearch is a modern, cloud-native application that enables users to search, discover, and interact with documents using advanced AI technologies. Built with a 3-tier architecture on Azure, it provides semantic search, AI-powered Q&A, and real-time document conversations.
+<div align="center">
+
+<img src="docs/assets/omnisearch-icon.svg" alt="Omnisearch Icon" width="96" height="96">
+
+**Omnisearch** is a modern, cloud-native application that enables users to search, discover, and interact with documents using advanced AI technologies. Built with a 3-tier architecture on Azure, it provides semantic search, AI-powered Q&A, and real-time document conversations.
+
+</div>
 
 ## 🌟 Features
 
