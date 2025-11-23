@@ -11,7 +11,11 @@ import { formatFileSize, formatDate, getFileIcon, debounce } from '@/lib/utils'
 import { Document } from '@/types'
 import { DocumentViewer } from './document-viewer'
 
-export function DocumentLibrary() {
+interface DocumentLibraryProps {
+  refreshTrigger?: number
+}
+
+export function DocumentLibrary({ refreshTrigger }: DocumentLibraryProps = {}) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([])
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'ready' | 'processing' | 'error'>('all')
@@ -20,13 +24,20 @@ export function DocumentLibrary() {
   const { documents, setSelectedDocument, removeDocument } = useDocumentStore()
   const { toast } = useToast()
 
+  // Debug: Log when documents change
+  useEffect(() => {
+    console.log('Documents in store changed:', documents.length, documents)
+  }, [documents])
+
   // Fetch documents from backend
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
+        console.log('Fetching documents, refreshTrigger:', refreshTrigger)
         const response = await fetch('/api/documents')
         if (response.ok) {
           const backendDocuments = await response.json()
+          console.log('Received documents from backend:', backendDocuments)
 
           // Transform backend format to frontend format
           const transformedDocuments: Document[] = backendDocuments.map((doc: any) => ({
@@ -36,10 +47,13 @@ export function DocumentLibrary() {
             size: doc.file_size,
             uploadedAt: doc.created_at,
             status: doc.status,
-            metadata: doc.metadata
+            metadata: doc.doc_metadata || doc.metadata || {}
           }))
 
+          console.log('Transformed documents:', transformedDocuments)
           useDocumentStore.getState().setDocuments(transformedDocuments)
+          // Force a re-render by updating the local state
+          setFilteredDocuments(transformedDocuments)
         } else {
           console.error('Failed to fetch documents:', response.statusText)
         }
@@ -54,15 +68,18 @@ export function DocumentLibrary() {
     }
 
     fetchDocuments()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger])
 
   // Filter and search documents
   useEffect(() => {
+    console.log('Filtering documents. Total:', documents.length, 'Filter:', selectedFilter, 'Query:', searchQuery)
     let filtered = documents
 
     // Apply status filter
     if (selectedFilter !== 'all') {
       filtered = filtered.filter(doc => doc.status === selectedFilter)
+      console.log('After status filter:', filtered.length)
     }
 
     // Apply search filter
@@ -72,8 +89,10 @@ export function DocumentLibrary() {
         doc.name.toLowerCase().includes(query) ||
         doc.metadata?.tags?.some(tag => tag.toLowerCase().includes(query))
       )
+      console.log('After search filter:', filtered.length)
     }
 
+    console.log('Final filtered documents:', filtered.length)
     setFilteredDocuments(filtered)
   }, [documents, searchQuery, selectedFilter])
 

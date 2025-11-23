@@ -7,6 +7,13 @@ import { Upload, FileText } from 'lucide-react'
 
 export default function DocumentsPage() {
     const [showUpload, setShowUpload] = useState(false)
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+    const handleUploadComplete = () => {
+        setShowUpload(false)
+        // Trigger refresh of document library
+        setRefreshTrigger(prev => prev + 1)
+    }
 
     return (
         <div className="h-full flex flex-col">
@@ -30,17 +37,13 @@ export default function DocumentsPage() {
             {showUpload && (
                 <DocumentUpload
                     onClose={() => setShowUpload(false)}
-                    onUploadComplete={() => {
-                        setShowUpload(false)
-                        // Refresh the document library
-                        window.location.reload()
-                    }}
+                    onUploadComplete={handleUploadComplete}
                 />
             )}
 
             {/* Document Library */}
             <div className="flex-1">
-                <DocumentLibrary />
+                <DocumentLibrary refreshTrigger={refreshTrigger} />
             </div>
         </div>
     )

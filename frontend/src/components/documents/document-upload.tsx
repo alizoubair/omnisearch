@@ -56,6 +56,8 @@ export function DocumentUpload({ onClose, onUploadComplete }: DocumentUploadProp
     if (files.length === 0) return
 
     setIsUploading(true)
+    let successCount = 0
+    let hasError = false
 
     for (const uploadFile of files) {
       if (uploadFile.status !== 'pending') continue
@@ -77,16 +79,23 @@ export function DocumentUpload({ onClose, onUploadComplete }: DocumentUploadProp
         })
 
         if (response.ok) {
+          successCount++
           setFiles(prev => prev.map(f => 
             f.id === uploadFile.id 
               ? { ...f, status: 'success', progress: 100 }
               : f
           ))
+          // Small delay to ensure document is committed to database
+          await new Promise(resolve => setTimeout(resolve, 500))
+          // Trigger refresh after each successful upload
+          onUploadComplete()
         } else {
+          hasError = true
           const errorData = await response.json()
           throw new Error(errorData.error || 'Upload failed')
         }
       } catch (error) {
+        hasError = true
         console.error('Upload error:', error)
         setFiles(prev => prev.map(f => 
           f.id === uploadFile.id 
@@ -103,14 +112,18 @@ export function DocumentUpload({ onClose, onUploadComplete }: DocumentUploadProp
 
     setIsUploading(false)
 
-    // Check if all uploads completed successfully
-    const allSuccess = files.every(f => f.status === 'success')
-    if (allSuccess) {
+    // Show toast notification
+    if (successCount > 0) {
       toast({
         title: "Upload Complete",
-        description: `Successfully uploaded ${files.length} document(s)`
+        description: `Successfully uploaded ${successCount} document(s)${hasError ? ' (some files failed)' : ''}`
       })
-      onUploadComplete()
+    } else if (hasError) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload documents. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
