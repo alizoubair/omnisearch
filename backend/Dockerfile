@@ -44,6 +44,11 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY --chown=appuser:appuser app/ ./app/
 COPY --chown=appuser:appuser run.py ./
 
+# Create uploads directory with proper permissions
+RUN mkdir -p /app/uploads && \
+    chown -R appuser:appuser /app/uploads && \
+    chmod -R 755 /app/uploads
+
 # Set environment variables
 # Note: Environment variables are passed at runtime via docker run -e flags
 ENV PYTHONPATH=/app
