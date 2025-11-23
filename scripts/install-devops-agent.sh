@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+# Don't use set -e, handle errors explicitly
+set -o pipefail
 
 # Azure DevOps Agent Installation Script
 # This script downloads, installs, and configures the Azure DevOps agent on a Linux VM
@@ -11,7 +12,20 @@ ORG_URL="${2}"
 PAT="${3}"
 AGENT_PREFIX="${4}"
 
+# Log file for debugging
+LOG_FILE="/var/log/devops-agent-install.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "========================================="
+echo "Starting DevOps Agent Installation"
+echo "Timestamp: $(date)"
+echo "Pool: ${POOL_NAME}"
+echo "Org URL: ${ORG_URL}"
+echo "Agent Prefix: ${AGENT_PREFIX}"
+echo "========================================="
+
 if [ -z "$POOL_NAME" ] || [ -z "$ORG_URL" ] || [ -z "$PAT" ] || [ -z "$AGENT_PREFIX" ]; then
+  echo "ERROR: Missing required parameters"
   echo "Usage: $0 <POOL_NAME> <ORG_URL> <PAT> <AGENT_PREFIX>"
   exit 1
 fi
@@ -83,10 +97,16 @@ AGENT_TAR="${AGENT_DIR}/vsts-agent-linux-x64-${AGENT_VERSION}.tar.gz"
 
 # Download agent from the official Azure DevOps download URL
 echo "Downloading agent version ${AGENT_VERSION}..."
-sudo curl -L -f -o "$AGENT_TAR" "https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/vsts-agent-linux-x64-${AGENT_VERSION}.tar.gz" || {
-  echo "Error: Failed to download agent from download.agent.dev.azure.com"
+DOWNLOAD_URL="https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/vsts-agent-linux-x64-${AGENT_VERSION}.tar.gz"
+echo "Download URL: ${DOWNLOAD_URL}"
+
+if ! sudo curl -L -f --connect-timeout 30 --max-time 600 -o "$AGENT_TAR" "$DOWNLOAD_URL"; then
+  echo "ERROR: Failed to download agent from ${DOWNLOAD_URL}"
+  echo "Checking network connectivity..."
+  curl -I https://download.agent.dev.azure.com 2>&1 | head -5 || echo "Network check failed"
   exit 1
-}
+fi
+echo "Download completed successfully"
 
 # Verify download
 if [ ! -f "$AGENT_TAR" ]; then
@@ -121,7 +141,10 @@ fi
 
 # Run config.sh as azureuser using runuser (no sudo detection)
 # runuser creates a clean environment without sudo context
-runuser -l ${AGENT_USER} -c "\
+echo "Configuring agent with pool: ${POOL_NAME}, agent name: ${AGENT_NAME}"
+echo "Org URL: ${ORG_URL}"
+
+if ! runuser -l ${AGENT_USER} -c "\
   cd '${AGENT_DIR}' && \
   ./config.sh \
     --unattended \
@@ -132,7 +155,15 @@ runuser -l ${AGENT_USER} -c "\
     --agent '${AGENT_NAME}' \
     --replace \
     --acceptTeeEula \
-    --work '_work'"
+    --work '_work'" 2>&1; then
+  echo "ERROR: Agent configuration failed!"
+  echo "Check if:"
+  echo "  1. PAT token is valid"
+  echo "  2. Pool name '${POOL_NAME}' exists in Azure DevOps"
+  echo "  3. Organization URL '${ORG_URL}' is correct"
+  exit 1
+fi
+echo "Agent configuration completed successfully"
 
 # Verify Docker works for azureuser (using newgrp to activate docker group)
 echo "Verifying Docker access for ${AGENT_USER}..."
@@ -154,13 +185,35 @@ done
 # Reload systemd to clear any cached service definitions
 sudo systemctl daemon-reload 2>/dev/null || true
 # Install service
-sudo ./svc.sh install ${AGENT_USER}
+echo "Installing agent service as ${AGENT_USER}..."
+if ! sudo ./svc.sh install ${AGENT_USER}; then
+  echo "ERROR: Failed to install agent service"
+  exit 1
+fi
 
 echo "Starting agent service..."
-sudo ./svc.sh start
+if ! sudo ./svc.sh start; then
+  echo "ERROR: Failed to start agent service"
+  echo "Checking service status..."
+  sudo ./svc.sh status || true
+  exit 1
+fi
 
-echo "Azure DevOps agent installed and started successfully!"
+# Verify service is running
+sleep 2
+if sudo ./svc.sh status | grep -q "running"; then
+  echo "SUCCESS: Agent service is running"
+else
+  echo "WARNING: Agent service status check failed"
+  sudo ./svc.sh status || true
+fi
+
+echo "========================================="
+echo "Azure DevOps agent installation completed!"
 echo "Agent name: ${AGENT_NAME}"
 echo "Pool: ${POOL_NAME}"
 echo "Docker installed and configured for ${AGENT_USER}"
+echo "Log file: ${LOG_FILE}"
+echo "Timestamp: $(date)"
+echo "========================================="
 
