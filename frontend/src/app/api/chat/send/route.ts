@@ -21,9 +21,18 @@ export async function POST(request: NextRequest) {
 
     const accessToken = (session as any).accessToken || session.user.id
 
+    console.log('Chat send request:', { message, sessionId, documentIds, documentIdsType: typeof documentIds, documentIdsLength: documentIds?.length })
+
     const requestBody: any = { message, session_id: sessionId }
-    if (documentIds && documentIds.length > 0) {
-      requestBody.document_ids = documentIds
+    if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+      // Ensure document IDs are in the correct format (UUIDs as strings)
+      requestBody.document_ids = documentIds.filter((id: string) => {
+        // Filter out invalid IDs
+        return id && typeof id === 'string' && id.length > 0
+      })
+      console.log('Sending with document IDs:', requestBody.document_ids)
+    } else {
+      console.log('No document IDs provided or empty array')
     }
 
     const response = await fetch(`${backendUrl}/api/v1/chat/`, {
