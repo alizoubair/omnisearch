@@ -238,15 +238,49 @@ export const documentApi = {
 
   // Get all documents
   getDocuments: async (): Promise<any[]> => {
-    const response = await apiRequest<any[]>('/api/v1/documents')
-    return toCamelCase(response) || []
+    try {
+      const response = await fetch('/api/documents', {
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
+      
+      if (!response.ok) {
+        console.error('Failed to fetch documents:', response.status, response.statusText)
+        return []
+      }
+      
+      const documents = await response.json()
+      
+      // Ensure we have an array
+      if (!Array.isArray(documents)) {
+        console.error('Documents API did not return an array:', documents)
+        return []
+      }
+      
+      return toCamelCase(documents) || []
+    } catch (error: any) {
+      console.error('Error fetching documents:', error)
+      // Return empty array on error to prevent hanging
+      return []
+    }
   },
 
   // Delete a document
   deleteDocument: async (documentId: string): Promise<void> => {
-    await apiRequest(`/api/v1/documents/${documentId}`, {
-      method: 'DELETE',
-    })
+    try {
+      const response = await fetch(`/api/documents/${documentId}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to delete document: ${response.statusText}`)
+      }
+    } catch (error: any) {
+      console.error('Error deleting document:', error)
+      // Re-throw to allow caller to handle
+      throw error
+    }
   },
 }
 
