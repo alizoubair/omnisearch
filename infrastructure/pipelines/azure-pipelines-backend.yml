@@ -127,6 +127,21 @@ stages:
           $(acrName).azurecr.io/$(imageName):$(imageTag) \
           alembic upgrade head
         
+        # Create Azure AI Search index if it doesn't exist
+        echo "Creating Azure AI Search index..."
+        # Run the script from the repository (mounted as volume)
+        SCRIPT_DIR="$(pwd)/scripts"
+        if [ -f "$SCRIPT_DIR/create-search-index.py" ]; then
+          docker run --rm \
+            --network host \
+            --env-file "$ENV_FILE" \
+            -v "$SCRIPT_DIR:/scripts:ro" \
+            $(acrName).azurecr.io/$(imageName):$(imageTag) \
+            python /scripts/create-search-index.py || echo "⚠️ Index creation failed or index already exists, continuing..."
+        else
+          echo "⚠️ Script not found at $SCRIPT_DIR/create-search-index.py, skipping index creation"
+        fi
+        
         # Run new container
         docker run -d \
           --name omnisearch-backend \
