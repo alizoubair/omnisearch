@@ -168,7 +168,14 @@ export const chatApi = {
       const data = await response.json()
       // Handle both response formats: { message: {...} } or direct message object
       const messageData = data.message || data
-      return toCamelCase(messageData)
+      const transformed = toCamelCase(messageData)
+      
+      // Ensure timestamp exists
+      if (!transformed.timestamp) {
+        transformed.timestamp = new Date().toISOString()
+      }
+      
+      return transformed
     } catch (error: any) {
       console.error('Error sending chat message:', error)
       throw error
