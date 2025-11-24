@@ -105,8 +105,20 @@ class AIService:
     ) -> Optional[Dict[str, Any]]:
         """Generate AI response using Azure OpenAI with RAG"""
         try:
+            # Detect if this is a general question (like "What is this about?", "Summarize", etc.)
+            general_question_keywords = ["what is", "what's", "about", "summarize", "summary", "describe", "tell me about", "what does"]
+            is_general_question = any(keyword in user_message.lower() for keyword in general_question_keywords)
+            
+            # For general questions with selected documents, get more content
+            # Use the original query but increase limit to get more content
+            search_query = user_message
+            search_limit = 10 if (is_general_question and document_ids and len(document_ids) > 0) else 5
+            
+            if is_general_question and document_ids and len(document_ids) > 0:
+                logger.info(f"General question detected with selected documents - retrieving more content (limit={search_limit})")
+            
             # Search for relevant documents (filtered by document_ids if provided)
-            search_results = await self.search_documents(user_message, user_id, document_ids=document_ids)
+            search_results = await self.search_documents(search_query, user_id, document_ids=document_ids, limit=search_limit)
             
             # Build context from search results
             context = self._build_context_from_search(search_results, document_ids)
@@ -218,24 +230,38 @@ class AIService:
             # Build system prompt
             document_context_note = ""
             if document_ids and len(document_ids) > 0:
-                document_context_note = f"\nIMPORTANT: The user has specifically selected {len(document_ids)} document(s) to search. You MUST answer based ONLY on information from these selected documents. Do NOT ask which document the user is referring to - they have already selected specific documents."
+                document_context_note = f"\n\nCRITICAL: The user has specifically selected {len(document_ids)} document(s) to search. You MUST answer based ONLY on information from these selected documents. The user has already chosen which documents to search - do NOT ask them to select documents or specify which document they mean."
             
-            system_prompt = f"""You are an AI assistant for an enterprise document management system. 
-            Use the following context from the user's documents to answer their question accurately and helpfully.
-            {document_context_note}
-            
-            Context from documents:
-            {context}
-            
-            Instructions:
-            - Answer based ONLY on the provided context from the selected documents
-            - If documents were selected by the user, you already know which documents to use - do NOT ask the user to specify which document
-            - If the context indicates no relevant information was found in the selected documents, clearly state: "I couldn't find information about your question in the selected document(s)."
-            - Be concise and professional
-            - Always cite the specific document name when referencing information (the document name is provided in the context)
-            - If the context shows document names, use those names in your response
-            - Never ask "which document are you referring to" if documents have been selected
-            """
+            system_prompt = f"""You are an AI assistant for an enterprise document management system called Omnisearch. Your role is to help users find and understand information from their uploaded documents.
+
+{document_context_note}
+
+Context from documents:
+{context}
+
+IMPORTANT INSTRUCTIONS:
+1. Answer the user's question based ONLY on the context provided above
+2. If the context contains document content, analyze it and provide a helpful answer:
+   - For general questions like "What is this document about?" or "Summarize this", provide a comprehensive summary based on ALL the content in the context
+   - For specific questions, find and cite the relevant information
+   - Always mention the document name(s) when providing information
+3. If the context is empty or says "no relevant content found", this means:
+   - The search didn't find matching content in the selected documents
+   - The documents might still be processing/indexing
+   - The question might need to be rephrased
+   - The documents might not contain information about that topic
+4. When no relevant information is found, provide a helpful response like: "I searched through the selected document(s) but couldn't find specific information about [topic]. The documents might not contain details about this topic, or they may still be processing. Try rephrasing your question or selecting different documents."
+5. For general questions about document content (e.g., "What is this about?", "Summarize", "What does this document say?"):
+   - If context is provided, analyze ALL the content and provide a comprehensive summary
+   - Identify the main topics, themes, and key information
+   - Structure your response clearly with the main points
+   - DO NOT say you couldn't find information if context is provided - the context IS the document content
+6. Be conversational, helpful, and professional
+7. Always mention the document name when citing information
+8. If documents were selected, NEVER ask "which document are you referring to" - the user has already selected specific documents
+9. When context contains document content, that IS the information you need - use it to answer the question
+
+Remember: If the context contains document content, that means the search found it - use that content to answer the question. Only say you couldn't find information if the context explicitly says "no relevant content found" or is empty."""
             
             # Build messages for the conversation
             messages = [{"role": "system", "content": system_prompt}]
@@ -273,13 +299,14 @@ class AIService:
         """Build context string from search results"""
         if not search_results:
             if document_ids and len(document_ids) > 0:
-                return f"No relevant content found in the selected {len(document_ids)} document(s). The selected documents may not contain information related to the query."
-            return "No relevant documents found in your document library."
+                # Provide more helpful context when no results found
+                return f"Search completed for {len(document_ids)} selected document(s), but no matching content was found for the query. This could mean: (1) the documents don't contain information about this topic, (2) the documents are still being processed/indexed, or (3) the query needs to be rephrased. Document IDs searched: {', '.join(document_ids[:3])}{'...' if len(document_ids) > 3 else ''}"
+            return "No relevant documents found in your document library. The search returned no results for your query."
         
         context_parts = []
         for result in search_results:
-            context_part = f"Document: {result['document_name']}\n"
-            context_part += f"Content: {result['content']}\n"
+            context_part = f"Document Name: {result['document_name']}\n"
+            context_part += f"Document Content:\n{result['content']}\n"
             if result.get('metadata'):
                 # Parse metadata if it's a string
                 metadata = result['metadata']
@@ -291,6 +318,10 @@ class AIService:
                 if isinstance(metadata, dict) and metadata.get('page'):
                     context_part += f"Source: Page {metadata.get('page', 'N/A')}\n"
             context_parts.append(context_part)
+        
+        # Add a clear header when content is found
+        if context_parts:
+            return f"RELEVANT CONTENT FOUND IN SELECTED DOCUMENTS:\n\n" + "\n\n---\n\n".join(context_parts)
         
         return "\n---\n".join(context_parts)
     
