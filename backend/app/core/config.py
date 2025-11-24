@@ -61,7 +61,15 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        # Explicitly enable environment variable reading
+        env_file_encoding = 'utf-8'
 
 
 # Create settings instance
 settings = Settings()
+
+# Debug: Log Document Intelligence settings at startup
+import logging
+logger = logging.getLogger(__name__)
+logger.info(f"Document Intelligence Endpoint from settings: {settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT}")
+logger.info(f"Document Intelligence API Key exists: {bool(settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY)}")

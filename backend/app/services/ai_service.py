@@ -62,19 +62,29 @@ class AIService:
     async def document_client(self) -> Optional[DocumentAnalysisClient]:
         """Get Azure Document Intelligence client"""
         if not self._document_client:
-            logger.info(f"Document Intelligence Endpoint: {settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT}")
-            logger.info(f"Document Intelligence API Key exists: {bool(settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY)}")
+            endpoint = settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+            api_key = settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY
             
-            if settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY:
+            logger.info(f"Document Intelligence Endpoint: {endpoint}")
+            logger.info(f"Document Intelligence API Key exists: {bool(api_key)}")
+            logger.info(f"Document Intelligence API Key length: {len(api_key) if api_key else 0}")
+            
+            if endpoint and api_key:
                 from azure.core.credentials import AzureKeyCredential
-                logger.info("Initializing Document Intelligence client...")
-                self._document_client = DocumentAnalysisClient(
-                    endpoint=settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
-                    credential=AzureKeyCredential(settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY)
-                )
-                logger.info("Document Intelligence client initialized successfully")
+                # Strip trailing slash from endpoint if present
+                endpoint = endpoint.rstrip('/')
+                logger.info(f"Initializing Document Intelligence client with endpoint: {endpoint}")
+                try:
+                    self._document_client = DocumentAnalysisClient(
+                        endpoint=endpoint,
+                        credential=AzureKeyCredential(api_key)
+                    )
+                    logger.info("Document Intelligence client initialized successfully")
+                except Exception as e:
+                    logger.error(f"Failed to initialize Document Intelligence client: {e}")
+                    self._document_client = None
             else:
-                logger.warning("Document Intelligence credentials not configured")
+                logger.warning("Document Intelligence credentials not configured - endpoint or API key is missing")
         return self._document_client
     
     @property
@@ -336,10 +346,12 @@ class AIService:
                 return content
             
             # Use Azure Document Intelligence for other file types
+            # Debug: Check settings directly
+            logger.info(f"Checking Document Intelligence settings - Endpoint: {settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT}, API Key exists: {bool(settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY)}")
             document_client = await self.document_client
             
             if not document_client:
-                logger.warning("Azure Document Intelligence not configured, using fallback")
+                logger.warning(f"Azure Document Intelligence not configured - Endpoint: {settings.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT}, API Key: {'SET' if settings.AZURE_DOCUMENT_INTELLIGENCE_API_KEY else 'NOT SET'}")
                 return await self._fallback_text_extraction(file_path, file_type)
             
             # Read file content
