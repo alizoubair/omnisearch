@@ -105,18 +105,33 @@ export async function DELETE(
       headers: {
         'Authorization': `Bearer ${accessToken}`,
       },
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     })
 
     if (!response.ok) {
       if (response.status === 404) {
         return NextResponse.json({ error: 'Document not found' }, { status: 404 })
       }
-      throw new Error(`Backend responded with ${response.status}`)
+      const errorText = await response.text().catch(() => '')
+      console.error(`Backend delete error: ${response.status} - ${errorText}`)
+      return NextResponse.json(
+        { error: `Failed to delete document: ${response.statusText}` },
+        { status: response.status }
+      )
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting document:', error)
+    
+    // Handle timeout
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Request timeout - the server took too long to respond' },
+        { status: 408 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Failed to delete document' },
       { status: 500 }
