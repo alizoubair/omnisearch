@@ -6,6 +6,8 @@
 
 **Omnisearch** is a modern, cloud-native application that enables users to search, discover, and interact with documents using advanced AI technologies. Built with a 3-tier architecture on Azure, it provides semantic search, AI-powered Q&A, and real-time document conversations.
 
+![Omnisearch Icon](https://img.shields.io/badge/Omnisearch-AI%20Search-blue?style=for-the-badge&logo=azure&logoColor=white)
+
 </div>
 
 ## 🌟 Features
@@ -22,6 +24,10 @@
 
 Omnisearch follows a **3-tier architecture** deployed on Azure:
 
+<div align="center">
+  <img src="docs/assets/architecture.png" alt="Omnisearch Architecture Diagram" width="800">
+</div>
+
 ### Components
 
 - **Frontend**: Next.js 14 with TypeScript, Tailwind CSS, and Radix UI
@@ -30,6 +36,12 @@ Omnisearch follows a **3-tier architecture** deployed on Azure:
 - **AI Services**: Azure OpenAI, Document Intelligence, and AI Search
 - **Infrastructure**: Terraform-managed Azure resources
 - **CI/CD**: Azure DevOps pipelines with self-hosted agents
+
+### Architecture Layers
+
+1. **Presentation Layer**: Next.js frontend served via Application Gateway
+2. **Application Layer**: FastAPI backend on VM Scale Sets with Internal Load Balancer
+3. **Data Layer**: PostgreSQL with private networking, Azure AI Search index, and Azure Storage
 
 ## 📁 Project Structure
 
@@ -67,8 +79,12 @@ omnisearch/
 │       ├── azure-pipelines-frontend.yml
 │       └── azure-pipelines-backend.yml
 │
-└── scripts/                     # Utility scripts
-    └── install-devops-agent.sh # DevOps agent setup
+│├── scripts/                           # Utility scripts
+│   ├── create-search-index.py        # Azure AI Search index creation script
+│   └── install-devops-agent.sh        # DevOps agent installation script
+│
+├── docker-compose.yml                 # Local development Docker Compose
+└── README.md                          
 ```
 
 ## 🚀 Quick Start
@@ -111,8 +127,6 @@ The API will be available at:
 - **API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 
-See [backend/README.md](backend/README.md) for detailed backend documentation.
-
 #### 3. Set Up Frontend
 
 ```bash
@@ -128,8 +142,6 @@ npm run dev
 ```
 
 The frontend will be available at http://localhost:3000
-
-See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
 
 ### Infrastructure Deployment
 
@@ -168,7 +180,103 @@ This will create:
 - Azure Key Vault
 - Azure DevOps resources
 
-See [infrastructure/terraform/README.md](infrastructure/terraform/README.md) for detailed infrastructure documentation.
+## 🤖 AI Services
+
+Omnisearch leverages three Azure AI services to provide intelligent document search and Q&A capabilities:
+
+### 1. Azure Document Intelligence
+
+**Role**: Extracts text content from uploaded documents to make them searchable.
+
+**Key Features**:
+- Converts PDF, Word (.doc, .docx), and image files into plain text
+- Uses the "prebuilt-read" model for general-purpose text extraction
+- Extracts text line-by-line from document pages
+- Supports OCR for images (JPEG, PNG)
+
+**Workflow**:
+1. Document uploaded → stored in file system
+2. Document Intelligence analyzes the file
+3. Text content extracted and stored in database
+4. Content becomes available for search and Q&A
+
+**Configuration**:
+- `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT`
+- `AZURE_DOCUMENT_INTELLIGENCE_API_KEY`
+
+### 2. Azure OpenAI
+
+**Role**: Provides two critical AI capabilities:
+- **Embeddings Generation**: Creates vector representations of document content
+- **Chat Completions**: Generates AI responses using RAG (Retrieval-Augmented Generation)
+
+#### Embeddings Generation
+- **Model**: `text-embedding-ada-002`
+- **Purpose**: Convert document text into vector embeddings (1536 dimensions) for semantic search
+- **Input**: Document text content (up to 8,000 characters)
+- **Usage**: Embeddings stored in Azure AI Search for vector similarity search
+
+#### Chat Completions (RAG)
+- **Model**: GPT-4 (configurable)
+- **Purpose**: Generate intelligent responses to user questions based on document content
+- **Workflow**:
+  1. User asks a question (optionally with selected documents)
+  2. Azure AI Search finds relevant document content
+  3. Context is built from search results
+  4. GPT-4 generates response using:
+     - System prompt with instructions
+     - Document context from search
+     - Conversation history (last 10 messages)
+     - User's current question
+
+**Configuration**:
+- `AZURE_OPENAI_ENDPOINT`
+- `AZURE_OPENAI_API_KEY`
+- `AZURE_OPENAI_DEPLOYMENT_NAME` (default: `gpt-4`)
+- `AZURE_OPENAI_API_VERSION` (default: `2024-02-15-preview`)
+
+**AI Response Settings**:
+- Max Tokens: 4,000
+- Temperature: 0.7 (balanced creativity/consistency)
+- Top P: 0.9
+
+### 3. Azure AI Search
+
+**Role**: Provides semantic search capabilities across all user documents using vector similarity search and keyword matching.
+
+**Key Features**:
+- **Document Indexing**: Stores document content, metadata, and vector embeddings
+- **Semantic Search**: Finds relevant documents based on meaning, not just keywords
+- **Filtering**: Supports filtering by `user_id` and `document_ids` for multi-tenancy
+- **Ranking**: Returns results sorted by relevance score
+- **Highlighting**: Returns highlighted snippets of matching content
+
+**Index Schema**:
+- `id`: Unique identifier
+- `title`: Document title
+- `content`: Full text content
+- `document_id`: Reference to document in database
+- `document_name`: Document name
+- `user_id`: Owner of the document (for filtering)
+- `metadata`: JSON metadata (page numbers, etc.)
+- `content_vector`: Vector embeddings (1536 dimensions)
+- `created_at`: Timestamp
+
+**Search Query Flow**:
+1. User submits query (with optional document selection)
+2. Search filter built: `user_id eq '{user_id}'` + optional `document_id` filters
+3. Azure AI Search performs search with:
+   - Search text query
+   - Filter expression
+   - Top N results (default: 5, up to 10 for general questions)
+   - Field highlighting
+4. Results returned with relevance scores and highlights
+5. Context built from results for AI response generation
+
+**Configuration**:
+- `AZURE_SEARCH_ENDPOINT`
+- `AZURE_SEARCH_API_KEY`
+- `AZURE_SEARCH_INDEX_NAME` (default: `ai-foundry-documents`)
 
 ## 🛠️ Tech Stack
 

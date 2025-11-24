@@ -12,7 +12,8 @@ export default function Icon() {
         (
             <div
                 style={{
-                    background: '#0f172a',
+                    // Using app's dark mode background color: hsl(0 0% 3.9%) ≈ #0a0a0a
+                    background: '#0a0a0a',
                     width: '100%',
                     height: '100%',
                     display: 'flex',
@@ -27,7 +28,7 @@ export default function Icon() {
                     height="28"
                     viewBox="0 0 512 512"
                 >
-                    {/* Infinity loop - same as OmnisearchIcon */}
+                    {/* Infinity loop - white color on dark background */}
                     <path
                         d="M140 256C140 204 188 156 240 156C284 156 308 188 324 212L344 244C356 264 372 292 400 292C424 292 444 276 444 252C444 228 424 212 400 212C384 212 372 220 364 232L340 268C316 304 288 348 240 348C188 348 140 308 140 256Z"
                         stroke="white"

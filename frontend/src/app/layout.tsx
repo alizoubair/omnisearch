@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Omnisearch - AI Document Search Platform',
+  title: 'Omnisearch - AI Document Search App',
   description: 'Search every document, find every answer with AI-powered document discovery',
   keywords: ['AI', 'Document Search', 'Semantic Search', 'Document Management', 'AI Chat'],
   // Next.js will automatically use icon.tsx for favicon
