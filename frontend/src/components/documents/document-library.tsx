@@ -39,26 +39,39 @@ export function DocumentLibrary({ refreshTrigger }: DocumentLibraryProps = {}) {
           const backendDocuments = await response.json()
           console.log('Received documents from backend:', backendDocuments)
 
+          // Ensure backendDocuments is an array
+          if (!Array.isArray(backendDocuments)) {
+            console.error('Backend did not return an array:', backendDocuments)
+            useDocumentStore.getState().setDocuments([])
+            return
+          }
+
           // Transform backend format to frontend format
           const transformedDocuments: Document[] = backendDocuments.map((doc: any) => ({
             id: doc.id,
-            name: doc.name,
-            type: doc.file_type,
-            size: doc.file_size,
+            name: doc.name || doc.original_name || 'Untitled',
+            type: doc.file_type || 'unknown',
+            size: doc.file_size || 0,
             uploadedAt: doc.created_at,
-            status: doc.status,
+            status: doc.status || 'ready',
             metadata: doc.doc_metadata || doc.metadata || {}
           }))
 
-          console.log('Transformed documents:', transformedDocuments)
+          console.log('Transformed documents:', transformedDocuments.length, transformedDocuments)
           useDocumentStore.getState().setDocuments(transformedDocuments)
-          // Force a re-render by updating the local state
-          setFilteredDocuments(transformedDocuments)
         } else {
-          console.error('Failed to fetch documents:', response.statusText)
+          const errorText = await response.text()
+          console.error('Failed to fetch documents:', response.status, errorText)
+          useDocumentStore.getState().setDocuments([])
+          toast({
+            title: "Error",
+            description: `Failed to load documents: ${response.statusText}`,
+            variant: "destructive"
+          })
         }
       } catch (error) {
         console.error('Error fetching documents:', error)
+        useDocumentStore.getState().setDocuments([])
         toast({
           title: "Error",
           description: "Failed to load documents",
@@ -173,7 +186,11 @@ export function DocumentLibrary({ refreshTrigger }: DocumentLibraryProps = {}) {
             <div className="text-6xl mb-4">📄</div>
             <h3 className="text-lg font-semibold mb-2">No documents found</h3>
             <p className="text-muted-foreground">
-              {searchQuery ? 'Try adjusting your search terms' : 'Upload some documents to get started'}
+              {documents.length === 0 
+                ? 'Upload some documents to get started'
+                : searchQuery || selectedFilter !== 'all'
+                ? 'Try adjusting your search terms or filters'
+                : 'No documents available'}
             </p>
           </div>
         ) : (
