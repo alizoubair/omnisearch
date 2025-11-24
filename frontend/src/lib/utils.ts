@@ -15,15 +15,27 @@ export function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-export function formatDate(date: string | Date): string {
-  const d = new Date(date)
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) {
+    return 'Just now'
+  }
+  
+  try {
+    const d = new Date(date)
+    // Check if date is valid
+    if (isNaN(d.getTime())) {
+      return 'Just now'
+    }
+    return d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (error) {
+    return 'Just now'
+  }
 }
 
 export function getFileIcon(fileType: string): string {
