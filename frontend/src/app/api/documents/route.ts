@@ -38,26 +38,31 @@ export async function GET(request: NextRequest) {
     })
 
     if (!response.ok) {
-      throw new Error(`Backend responded with ${response.status}`)
+      console.error(`Backend responded with ${response.status}`)
+      // Return empty array instead of throwing to prevent frontend from hanging
+      return NextResponse.json([])
     }
 
     const documents = await response.json()
+    
+    // Ensure we always return an array
+    if (!Array.isArray(documents)) {
+      console.error('Backend did not return an array:', documents)
+      return NextResponse.json([])
+    }
+    
     return NextResponse.json(documents)
   } catch (error: any) {
     console.error('Error fetching documents:', error)
     
-    // Handle timeout
+    // Handle timeout - return empty array instead of error
     if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-      return NextResponse.json(
-        { error: 'Request timeout - the server took too long to respond' },
-        { status: 408 }
-      )
+      console.error('Request timeout - returning empty array')
+      return NextResponse.json([])
     }
     
-    return NextResponse.json(
-      { error: 'Failed to fetch documents' },
-      { status: 500 }
-    )
+    // Return empty array on any error to prevent frontend from hanging
+    return NextResponse.json([])
   }
 }
 
