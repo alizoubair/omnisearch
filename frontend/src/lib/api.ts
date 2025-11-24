@@ -145,21 +145,39 @@ function toCamelCase(obj: any): any {
 export const chatApi = {
   // Send a message and get AI response
   sendMessage: async (message: string, sessionId: string, documentIds?: string[]): Promise<ChatMessage> => {
-    const requestBody: any = { message, session_id: sessionId }
-    if (documentIds && documentIds.length > 0) {
-      requestBody.document_ids = documentIds
+    try {
+      const requestBody: any = { message, sessionId }
+      if (documentIds && documentIds.length > 0) {
+        requestBody.documentIds = documentIds
+      }
+
+      const response = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(60000), // 60 second timeout for AI responses
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to send message: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      // Handle both response formats: { message: {...} } or direct message object
+      const messageData = data.message || data
+      return toCamelCase(messageData)
+    } catch (error: any) {
+      console.error('Error sending chat message:', error)
+      throw error
     }
-    const response = await apiRequest<any>('/api/v1/chat/', {
-      method: 'POST',
-      body: JSON.stringify(requestBody),
-    })
-    return toCamelCase(response.message)
   },
 
   // Get all chat sessions for the user
   getSessions: async (): Promise<ChatSession[]> => {
     try {
-      // Use Next.js API route for server-side proxying
       const response = await fetch('/api/chat/sessions', {
         method: 'GET',
         headers: {
@@ -190,34 +208,79 @@ export const chatApi = {
 
   // Create a new chat session
   createSession: async (title?: string): Promise<ChatSession> => {
-    const response = await apiRequest<any>('/api/v1/chat/sessions', {
-      method: 'POST',
-      body: JSON.stringify({ title: title || 'New Chat' }),
-    })
-    const transformed = toCamelCase(response)
-    // Ensure messages array exists
-    if (!transformed.messages) {
-      transformed.messages = []
+    try {
+      const response = await fetch('/api/chat/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: title || 'New Chat' }),
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to create chat session: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const transformed = toCamelCase(data)
+      // Ensure messages array exists
+      if (!transformed.messages) {
+        transformed.messages = []
+      }
+      return transformed
+    } catch (error: any) {
+      console.error('Error creating chat session:', error)
+      throw error
     }
-    return transformed
   },
 
   // Get a specific chat session
   getSession: async (sessionId: string): Promise<ChatSession> => {
-    const response = await apiRequest<any>(`/api/v1/chat/sessions/${sessionId}`)
-    const transformed = toCamelCase(response)
-    // Ensure messages array exists
-    if (!transformed.messages) {
-      transformed.messages = []
+    try {
+      const response = await fetch(`/api/chat/sessions/${sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to fetch chat session: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const transformed = toCamelCase(data)
+      // Ensure messages array exists
+      if (!transformed.messages) {
+        transformed.messages = []
+      }
+      return transformed
+    } catch (error: any) {
+      console.error('Error fetching chat session:', error)
+      throw error
     }
-    return transformed
   },
 
   // Delete a chat session
   deleteSession: async (sessionId: string): Promise<void> => {
-    await apiRequest(`/api/v1/chat/sessions/${sessionId}`, {
-      method: 'DELETE',
-    })
+    try {
+      const response = await fetch(`/api/chat/sessions/${sessionId}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to delete chat session: ${response.statusText}`)
+      }
+    } catch (error: any) {
+      console.error('Error deleting chat session:', error)
+      throw error
+    }
   },
 }
 
