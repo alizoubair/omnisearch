@@ -158,13 +158,34 @@ export const chatApi = {
 
   // Get all chat sessions for the user
   getSessions: async (): Promise<ChatSession[]> => {
-    const response = await apiRequest<any[]>('/api/v1/chat/sessions')
-    const transformed = toCamelCase(response)
-    // Ensure each session has messages array
-    return transformed.map((session: any) => ({
-      ...session,
-      messages: session.messages || []
-    }))
+    try {
+      // Use Next.js API route for server-side proxying
+      const response = await fetch('/api/chat/sessions', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error('Error fetching chat sessions:', response.status, error)
+        return []
+      }
+
+      const data = await response.json()
+      const transformed = toCamelCase(data)
+      // Ensure each session has messages array
+      return transformed.map((session: any) => ({
+        ...session,
+        messages: session.messages || []
+      }))
+    } catch (error: any) {
+      console.error('Error fetching chat sessions:', error)
+      // Return empty array on error instead of throwing
+      return []
+    }
   },
 
   // Create a new chat session

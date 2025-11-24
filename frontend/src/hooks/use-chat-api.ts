@@ -19,6 +19,8 @@ export function useChatSessions() {
     refetchOnWindowFocus: true, // Refetch when user returns to tab
     refetchOnMount: true, // Always refetch on mount
     gcTime: 0, // Don't cache after unmount - always fetch fresh
+    retry: 1, // Only retry once
+    retryDelay: 1000, // Wait 1 second before retry
   })
 }
 

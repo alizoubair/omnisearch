@@ -78,19 +78,27 @@ async def get_chat_sessions(
     db: AsyncSession = Depends(get_db)
 ):
     """Get user's chat sessions"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
+        logger.info(f"Fetching chat sessions for user {user_id}, limit={limit}, offset={offset}")
         chat_service = ChatService(db)
         sessions = await chat_service.get_user_sessions(
             user_id=user_id,
             limit=limit,
             offset=offset
         )
+        logger.info(f"Found {len(sessions)} chat sessions for user {user_id}")
         return sessions
         
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error fetching chat sessions for user {user_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch chat sessions"
+            detail=f"Failed to fetch chat sessions: {str(e)}"
         )
 
 
