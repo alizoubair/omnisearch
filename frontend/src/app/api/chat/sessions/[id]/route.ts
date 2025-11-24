@@ -4,7 +4,10 @@ import { authOptions } from '@/lib/auth'
 
 const backendUrl = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -14,21 +17,23 @@ export async function GET(request: NextRequest) {
 
     const accessToken = (session as any).accessToken || session.user.id
 
-    const response = await fetch(`${backendUrl}/api/v1/chat/sessions`, {
+    const response = await fetch(`${backendUrl}/api/v1/chat/sessions/${params.id}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      // Add timeout
       signal: AbortSignal.timeout(30000), // 30 second timeout
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('Backend error:', response.status, error)
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Chat session not found' }, { status: 404 })
+      }
+      const errorText = await response.text().catch(() => '')
+      console.error(`Backend get session error: ${response.status} - ${errorText}`)
       return NextResponse.json(
-        { error: error || 'Failed to fetch chat sessions' },
+        { error: errorText || 'Failed to fetch chat session' },
         { status: response.status }
       )
     }
@@ -37,7 +42,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data)
 
   } catch (error: any) {
-    console.error('Chat sessions API error:', error)
+    console.error('Chat session GET API error:', error)
     
     // Handle timeout
     if (error.name === 'TimeoutError' || error.name === 'AbortError') {
@@ -48,13 +53,16 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to fetch chat sessions' },
+      { error: 'Failed to fetch chat session' },
       { status: 500 }
     )
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -62,35 +70,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { title } = body
-
     const accessToken = (session as any).accessToken || session.user.id
 
-    const response = await fetch(`${backendUrl}/api/v1/chat/sessions`, {
-      method: 'POST',
+    const response = await fetch(`${backendUrl}/api/v1/chat/sessions/${params.id}`, {
+      method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: title || 'New Chat' }),
       signal: AbortSignal.timeout(30000), // 30 second timeout
     })
 
     if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Chat session not found' }, { status: 404 })
+      }
       const errorText = await response.text().catch(() => '')
-      console.error(`Backend create session error: ${response.status} - ${errorText}`)
+      console.error(`Backend delete session error: ${response.status} - ${errorText}`)
       return NextResponse.json(
-        { error: errorText || 'Failed to create chat session' },
+        { error: errorText || 'Failed to delete chat session' },
         { status: response.status }
       )
     }
 
-    const data = await response.json()
-    return NextResponse.json(data)
+    return NextResponse.json({ success: true })
 
   } catch (error: any) {
-    console.error('Chat session creation API error:', error)
+    console.error('Chat session DELETE API error:', error)
     
     // Handle timeout
     if (error.name === 'TimeoutError' || error.name === 'AbortError') {
@@ -101,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to create chat session' },
+      { error: 'Failed to delete chat session' },
       { status: 500 }
     )
   }
