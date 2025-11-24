@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
+      // Add timeout
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     })
 
     if (!response.ok) {
@@ -41,8 +43,17 @@ export async function GET(request: NextRequest) {
 
     const documents = await response.json()
     return NextResponse.json(documents)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching documents:', error)
+    
+    // Handle timeout
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Request timeout - the server took too long to respond' },
+        { status: 408 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch documents' },
       { status: 500 }
